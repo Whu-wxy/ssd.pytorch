@@ -43,6 +43,8 @@ class SSD(nn.Module):
         self.loc = nn.ModuleList(head[0])
         self.conf = nn.ModuleList(head[1])
 
+        if phase == 'trace':
+            self.softmax = nn.Softmax(dim=-1)
         if phase == 'test':
             self.softmax = nn.Softmax(dim=-1)
             self.detect = Detect(num_classes, 0, 200, 0.01, 0.45)
@@ -102,6 +104,9 @@ class SSD(nn.Module):
                              self.num_classes)),                # conf preds
                 self.priors.type(type(x.data))                  # default boxes
             )
+        elif self.phase == "trace":
+            output = torch.cat(
+                (loc.view(loc.size(0), -1, 4), self.softmax(conf.view(conf.size(0), -1, self.num_classes))), 2)
         else:
             output = (
                 loc.view(loc.size(0), -1, 4),
@@ -196,7 +201,7 @@ mbox = {
 
 
 def build_ssd(phase, size=300, num_classes=21):
-    if phase != "test" and phase != "train":
+    if phase != "test" and phase != "train" and phase != "trace":
         print("ERROR: Phase: " + phase + " not recognized")
         return
     if size != 300:
